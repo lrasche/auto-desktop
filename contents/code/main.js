@@ -7,13 +7,43 @@ function log(msg) {
     print("KWinMax2NewVirtualDesktop: " + msg);
 }
 
+function clientsOnDesktop(desktop){
+    const clients = workspace.clientList();
+    var sum = 0;
+    for (var i = 0; i < clients.length; i++) {
+        if(clients[i].desktop == desktop) {
+            sum++;
+        }
+    }
+    return sum;
+}
+
+function shiftDesktops(boundary, reverse) {
+    const clients = workspace.clientList();
+    var direction = -1;
+    
+    if (!reverse){
+        direction = 1;
+        workspace.desktops += 1;
+    }
+    
+    for (var i= 0; i < clients.length; i++){
+        if (clients[i].isCurrentTab && clients[i].desktop >= boundary) {
+            clients[i].desktop += direction;
+        }
+    }
+    
+    if (reverse){
+        workspace.desktops -= 1;
+    }
+}
+
 function moveToNewDesktop(client) {
     state.savedDesktops[client.windowId] = client.desktop;
 
-    var next = workspace.desktops + 1;
-    workspace.desktops = next;
-    client.desktop = next;
-    workspace.currentDesktop = next;
+    shiftDesktops(client.desktop + 1, false);
+    client.desktop += 1;
+    workspace.currentDesktop += 1;
     workspace.activateClient = client;
 }
 
@@ -23,27 +53,31 @@ function moveBack(client) {
         log("Ignoring window not previously seen: " + client.caption);
     } else {
         log("Resotre client desktop to " + saved);
+        const old = client.desktop;
         client.desktop = saved;
         workspace.currentDesktop = saved;
         workspace.activateClient = client;
-
-        workspace.desktops -= 1;
+        if (clientsOnDesktop(old) == 0) {
+            shiftDesktops(old + 1, true);
+        }
     }
 }
 
 function fullHandler(client, full, user) {
     if (full) {
-        moveToNewDesktop(client);
+        if (clientsOnDesktop(client.desktop) > 1){
+            moveToNewDesktop(client);
+        }
     } else {
         moveBack(client);
     }
 }
-
 function rmHandler(client) {
     moveBack(client);
 }
 
 function install() {
+    workspace.clientMaximizeSet.connect(fullHandler);
     workspace.clientFullScreenSet.connect(fullHandler);
     workspace.clientRemoved.connect(rmHandler);
     log("Handler installed");
@@ -51,6 +85,7 @@ function install() {
 
 function uninstall() {
     workspace.clientFullScreenSet.disconnect(handler);
+    workspace.clientMaximizeSet.disconnect(fullHandler);
     workspace.clientRemoved.disconnect(rmHandler);
     log("Handler cleared");
 }
@@ -72,16 +107,6 @@ registerUserActionsMenu(function(client){
                     }
                 }
             },
-            /*
-            {
-                text: "Disable for this window",
-                checkable: true,
-                checked: false,
-                triggered: function(act) {
-                    log('Not implemented yet!');
-                }
-            }
-            */
         ]
     };
 });
