@@ -11,7 +11,7 @@ function clientsOnDesktop(desktop){
     const clients = workspace.clientList();
     var sum = 0;
     for (var i = 0; i < clients.length; i++) {
-        if(clients[i].desktop == desktop) {
+        if(clients[i].desktop == desktop && clients[i].normalWindow) {
             sum++;
         }
     }
@@ -27,14 +27,22 @@ function shiftDesktops(boundary, reverse) {
         workspace.desktops += 1;
     }
     
-    for (var i= 0; i < clients.length; i++){
+    for (var i= 0; i < clients.length; i++) {
         if (clients[i].isCurrentTab && clients[i].desktop >= boundary) {
             clients[i].desktop += direction;
         }
     }
     
-    if (reverse){
+    if (reverse && workspace.desktops > 4) {
         workspace.desktops -= 1;
+    }
+}
+
+function updateSavedDesktops(boundary) {
+    for(var window in state.saved){
+        if (state.saved[window] >= boundary) {
+            state.saved[window] += 1;
+        }
     }
 }
 
@@ -45,6 +53,7 @@ function moveToNewDesktop(client) {
     client.desktop += 1;
     workspace.currentDesktop += 1;
     workspace.activateClient = client;
+    updateSavedDesktops(workspace.currentDesktop);
 }
 
 function moveBack(client) {
@@ -65,7 +74,7 @@ function moveBack(client) {
 
 function fullHandler(client, full, user) {
     if (full) {
-        if (clientsOnDesktop(client.desktop) > 1){
+        if (clientsOnDesktop(client.desktop) > 1) {
             moveToNewDesktop(client);
         }
     } else {
