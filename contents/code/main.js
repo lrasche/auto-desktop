@@ -39,10 +39,9 @@ function shiftDesktops(boundary, reverse) {
 }
 
 function updateSavedDesktops(boundary, value) {
-    for(var window in state.saved){
-        if (state.saved[window] >= boundary) {
-            state.saved[window] += value;
-            log(window + "desktop: " + state.saved[window])
+    for(var window in state.savedDesktops){
+        if (state.savedDesktops[window] >= boundary) {
+            state.savedDesktops[window] += value;
         }
     }
 }
