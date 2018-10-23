@@ -8,13 +8,17 @@ function log(msg) {
 }
 
 function clientsOnDesktop(desktop){
-    const clients = workspace.clientList();
-    var sum = 0;
-    for (var i = 0; i < clients.length; i++) {
-        if(clients[i].desktop == desktop) {
-            sum++;
+    var sum = Infinity;
+    if(desktop > 1) {
+        const clients = workspace.clientList();
+        sum = 0;
+        for (var i = 0; i < clients.length; i++) {
+            if(clients[i].desktop == desktop && !clients[i].specialWindow) {
+                sum++;
+            }
         }
     }
+    
     return sum;
 }
 
