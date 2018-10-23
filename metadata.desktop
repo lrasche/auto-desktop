@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=Maxmize To New Virtual Desktop
-Comment=Automatically move fullscreened window to a new virtual desktop.
+Name=Auto-Desktop
+Comment=Automatically handle maximized windows and desktops.
 Icon=preferences-system-windows-script-test
 Type=Service
 
@@ -10,7 +10,7 @@ X-Plasma-MainScript=code/main.js
 X-KDE-PluginInfo-Author=Laurenz Rasche
 X-KDE-PluginInfo-Email=laurenz.rasche@gmail.com
 X-KDE-PluginInfo-Name=auto-desktop
-X-KDE-PluginInfo-Version=0.1.0
+X-KDE-PluginInfo-Version=0.1.3
 X-KDE-PluginInfo-EnabledByDefault=true
 
 X-KDE-PluginInfo-Depends=
