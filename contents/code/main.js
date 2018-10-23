@@ -4,14 +4,14 @@ var state = {
 };
 
 function log(msg) {
-    print("KWinMax2NewVirtualDesktop: " + msg);
+    print("Auto-Desktop: " + msg);
 }
 
 function clientsOnDesktop(desktop){
     const clients = workspace.clientList();
     var sum = 0;
     for (var i = 0; i < clients.length; i++) {
-        if(clients[i].desktop == desktop && clients[i].normalWindow) {
+        if(clients[i].desktop == desktop) {
             sum++;
         }
     }
@@ -38,10 +38,11 @@ function shiftDesktops(boundary, reverse) {
     }
 }
 
-function updateSavedDesktops(boundary) {
+function updateSavedDesktops(boundary, value) {
     for(var window in state.saved){
         if (state.saved[window] >= boundary) {
-            state.saved[window] += 1;
+            state.saved[window] += value;
+            log(window + "desktop: " + state.saved[window])
         }
     }
 }
@@ -53,7 +54,7 @@ function moveToNewDesktop(client) {
     client.desktop += 1;
     workspace.currentDesktop += 1;
     workspace.activateClient = client;
-    updateSavedDesktops(workspace.currentDesktop);
+    updateSavedDesktops(workspace.currentDesktop, 1);
 }
 
 function moveBack(client) {
@@ -69,6 +70,7 @@ function moveBack(client) {
         if (clientsOnDesktop(old) == 0) {
             shiftDesktops(old + 1, true);
         }
+        updateSavedDesktops(old, -1);
     }
 }
 
@@ -76,7 +78,7 @@ function fullHandler(client, full, user) {
     if (full) {
         if (clientsOnDesktop(client.desktop) > 1) {
             moveToNewDesktop(client);
-        }
+    }
     } else {
         moveBack(client);
     }
