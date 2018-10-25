@@ -13,7 +13,7 @@ function clientsOnDesktop(desktop){
         const clients = workspace.clientList();
         sum = 0;
         for (var i = 0; i < clients.length; i++) {
-            if(clients[i].desktop == desktop && !clients[i].specialWindow) {
+            if(clients[i].desktop == desktop) {
                 sum++;
             }
         }
