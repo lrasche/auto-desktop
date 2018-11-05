@@ -3,17 +3,26 @@ var state = {
     enabled: true
 };
 
+function ignore(client) {
+    const ignoreList = ["plasmashell", "lattedock", "krunner"];
+    for (var i in ignoreList) {
+        if (ignoreList[i] == client.resourceClass) {
+            return true;
+        }
+    }
+    return false;
+}
 function log(msg) {
     print("Auto-Desktop: " + msg);
 }
 
-function clientsOnDesktop(desktop){
+function clientsOnDesktop(desktop, noBorder){
     var sum = Infinity;
-    if(desktop > 1) {
+    if(desktop > 1 && workspace.desktops >= desktop) {
         const clients = workspace.clientList();
         sum = 0;
         for (var i = 0; i < clients.length; i++) {
-            if(clients[i].desktop == desktop && clients[i].normalWindow) {
+            if(clients[i].desktop == desktop && !ignore(clients[i]) && (clients[i].noBorder == noBorder || !noBorder)) {
                 sum++;
             }
         }
@@ -37,7 +46,7 @@ function shiftDesktops(boundary, reverse) {
         }
     }
     
-    if (reverse && workspace.desktops > 4) {
+    if (reverse && workspace.desktops > 1) {
         workspace.desktops -= 1;
     }
 }
@@ -51,12 +60,16 @@ function updateSavedDesktops(boundary, value) {
 }
 
 function moveToNewDesktop(client) {
+    if (client.resourceClass == "dolphin") {
+        return;
+    }
     state.savedDesktops[client.windowId] = client.desktop;
-
-    shiftDesktops(client.desktop + 1, false);
+    if (clientsOnDesktop(client.desktop +1, false) > 0) {
+        shiftDesktops(client.desktop + 1, false);
+    }
     client.desktop += 1;
     workspace.currentDesktop += 1;
-    workspace.activateClient = client;
+    workspace.activeClient = client;
     updateSavedDesktops(workspace.currentDesktop, 1);
 }
 
@@ -67,25 +80,35 @@ function moveBack(client) {
     } else {
         log("Resotre client desktop to " + saved);
         const old = client.desktop;
-        client.desktop = saved;
-        workspace.currentDesktop = saved;
-        workspace.activateClient = client;
-        if (clientsOnDesktop(old) == 0) {
+        if (clientsOnDesktop(old, false) <= 1) {
             shiftDesktops(old + 1, true);
         }
         updateSavedDesktops(old, -1);
+        client.desktop = saved;
+        workspace.currentDesktop = saved;
+        workspace.activeClient = client;
     }
 }
 
 function fullHandler(client, full, user) {
     if (full) {
-        if (clientsOnDesktop(client.desktop) > 1) {
+        if (clientsOnDesktop(client.desktop, false) > 1) {
             moveToNewDesktop(client);
     }
     } else {
         moveBack(client);
     }
 }
+
+function addHandler(client) {
+    if (!ignore(client) && (clientsOnDesktop(workspace.currentDesktop, true) > 0) && client.normalWindow) {
+        log(client.resourceClass);
+        client.desktop = 1;
+        workspace.currentDesktop = 1;
+    }
+}
+
+
 function rmHandler(client) {
     moveBack(client);
 }
@@ -94,6 +117,7 @@ function install() {
     workspace.clientMaximizeSet.connect(fullHandler);
     workspace.clientFullScreenSet.connect(fullHandler);
     workspace.clientRemoved.connect(rmHandler);
+    workspace.clientAdded.connect(addHandler);
     log("Handler installed");
 }
 
@@ -101,6 +125,7 @@ function uninstall() {
     workspace.clientFullScreenSet.disconnect(handler);
     workspace.clientMaximizeSet.disconnect(fullHandler);
     workspace.clientRemoved.disconnect(rmHandler);
+    workspace.clientAdded.disconnect(addHandler);
     log("Handler cleared");
 }
 
