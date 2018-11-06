@@ -105,12 +105,14 @@ function addHandler(client) {
         log(client.resourceClass);
         client.desktop = 1;
         workspace.currentDesktop = 1;
+        workspace.activeClient = client;
     }
 }
 
 
 function rmHandler(client) {
-    moveBack(client);
+    shiftDesktops(workspace.currentDesktop + 1, true);
+    workspace.currentDesktop = 1;
 }
 
 function install() {
