@@ -5,10 +5,12 @@ var state = {
 
 function ignore(client) {
     const ignoreList = ["plasmashell", "lattedock", "krunner"];
-    for (var i in ignoreList) {
-        if (ignoreList[i] == client.resourceClass) {
-            log("Ignoring " + client.caption)
-            return true;
+    if (client.normalWindow) {
+        for (var i in ignoreList) {
+            if (ignoreList[i] == client.resourceClass) {
+                log("Ignoring " + client.caption)
+                return true;
+            }
         }
     }
     return false;
@@ -71,21 +73,25 @@ function moveToNewDesktop(client) {
     updateSavedDesktops(workspace.currentDesktop, 1);
 }
 
-function moveBack(client) {
+function moveBack(client, deleted) {
     var saved = state.savedDesktops[client.windowId];
     if (saved === undefined) {
         log("Ignoring window not previously seen: " + client.caption);
     } else {
-        state.savedDesktops[client.windowId] = undefined;
         log("Resotre client desktop to " + saved);
+        state.savedDesktops[client.windowId] = undefined;
         const old = client.desktop;
         if (clientsOnDesktop(old, false) <= 1) {
             shiftDesktops(old + 1, true);
         }
         updateSavedDesktops(old, -1);
-        client.desktop = saved;
-        workspace.currentDesktop = saved;
-        workspace.activeClient = client;
+        if (deleted) {
+            workspace.currentDesktop = 1;
+        } else {
+            client.desktop = saved;
+            workspace.currentDesktop = saved;
+            workspace.activeClient = client;
+        }
     }
 }
 
@@ -110,11 +116,7 @@ function addHandler(client) {
 
 
 function rmHandler(client) {
-    log(clientsOnDesktop(workspace.currentDesktop));
-    if (clientsOnDesktop(workspace.currentDesktop) <= 1) {
-        shiftDesktops(workspace.currentDesktop + 1, true);
-        workspace.currentDesktop = 1;
-    }
+    moveBack(client, true);
 }
 
 function install() {
