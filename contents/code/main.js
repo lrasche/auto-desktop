@@ -7,6 +7,7 @@ function ignore(client) {
     const ignoreList = ["plasmashell", "lattedock", "krunner"];
     for (var i in ignoreList) {
         if (ignoreList[i] == client.resourceClass) {
+            log("Ignoring " + client.caption)
             return true;
         }
     }
@@ -22,7 +23,7 @@ function clientsOnDesktop(desktop, noBorder){
         const clients = workspace.clientList();
         sum = 0;
         for (var i = 0; i < clients.length; i++) {
-            if(clients[i].desktop == desktop && !ignore(clients[i]) && (clients[i].noBorder == noBorder || !noBorder)) {
+            if(clients[i].desktop == desktop && !ignore(clients[i]) && (clients[i].noBorder == noBorder || !noBorder) && !clients[i].deleted) {
                 sum++;
             }
         }
@@ -33,7 +34,7 @@ function clientsOnDesktop(desktop, noBorder){
 
 function shiftDesktops(boundary, reverse) {
     const clients = workspace.clientList();
-    var direction = -1;
+    var direction = -1; 
     
     if (!reverse){
         direction = 1;
@@ -52,17 +53,14 @@ function shiftDesktops(boundary, reverse) {
 }
 
 function updateSavedDesktops(boundary, value) {
-    for(var window in state.savedDesktops){
-        if (state.savedDesktops[window] >= boundary) {
-            state.savedDesktops[window] += value;
+    for(var client in state.savedDesktops){
+        if (state.savedDesktops[client] >= boundary) {
+            state.savedDesktops[client] += value;
         }
     }
 }
 
 function moveToNewDesktop(client) {
-    if (client.resourceClass == "dolphin") {
-        return;
-    }
     state.savedDesktops[client.windowId] = client.desktop;
     if (clientsOnDesktop(client.desktop +1, false) > 0) {
         shiftDesktops(client.desktop + 1, false);
@@ -78,6 +76,7 @@ function moveBack(client) {
     if (saved === undefined) {
         log("Ignoring window not previously seen: " + client.caption);
     } else {
+        state.savedDesktops[client.windowId] = undefined;
         log("Resotre client desktop to " + saved);
         const old = client.desktop;
         if (clientsOnDesktop(old, false) <= 1) {
@@ -102,7 +101,7 @@ function fullHandler(client, full, user) {
 
 function addHandler(client) {
     if (!ignore(client) && (clientsOnDesktop(workspace.currentDesktop, true) > 0) && client.normalWindow) {
-        log(client.resourceClass);
+        log("Moving new window to desktop 1")
         client.desktop = 1;
         workspace.currentDesktop = 1;
         workspace.activeClient = client;
@@ -111,8 +110,11 @@ function addHandler(client) {
 
 
 function rmHandler(client) {
-    shiftDesktops(workspace.currentDesktop + 1, true);
-    workspace.currentDesktop = 1;
+    log(clientsOnDesktop(workspace.currentDesktop));
+    if (clientsOnDesktop(workspace.currentDesktop) <= 1) {
+        shiftDesktops(workspace.currentDesktop + 1, true);
+        workspace.currentDesktop = 1;
+    }
 }
 
 function install() {
