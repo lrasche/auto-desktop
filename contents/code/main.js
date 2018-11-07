@@ -124,6 +124,7 @@ function install() {
     workspace.clientFullScreenSet.connect(fullHandler);
     workspace.clientRemoved.connect(rmHandler);
     workspace.clientAdded.connect(addHandler);
+    workspace.desktops = 1;
     log("Handler installed");
 }
 
