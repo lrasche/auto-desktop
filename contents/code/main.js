@@ -3,20 +3,29 @@ var state = {
     enabled: true
 };
 
+function log(msg, client, indent) {
+    var suffix = "";
+    var prefix = "Auto-Desktop: ";
+    if (client) {
+        suffix += " - " + client.caption;
+    } 
+    if (indent) {
+        prefix += "\t";
+    }
+    print(prefix + msg + suffix);
+}
+
 function ignore(client) {
     const ignoreList = ["plasmashell", "lattedock", "krunner"];
     if (client.normalWindow) {
         for (var i in ignoreList) {
             if (ignoreList[i] == client.resourceClass) {
-                log("Ignoring " + client.caption)
+                log("Ignoring client", client)
                 return true;
             }
         }
     }
     return false;
-}
-function log(msg) {
-    print("Auto-Desktop: " + msg);
 }
 
 function clientsOnDesktop(desktop, noBorder){
@@ -58,11 +67,13 @@ function updateSavedDesktops(boundary, value) {
     for(var client in state.savedDesktops){
         if (state.savedDesktops[client] >= boundary) {
             state.savedDesktops[client] += value;
+            log("Updating savedDesktop to " + state.savedDesktops[client], client, true)
         }
     }
 }
 
 function moveToNewDesktop(client) {
+    log("Moving window to new desktop", client, true)
     state.savedDesktops[client.windowId] = client.desktop;
     if (clientsOnDesktop(client.desktop +1, false) > 0) {
         shiftDesktops(client.desktop + 1, false);
@@ -76,9 +87,9 @@ function moveToNewDesktop(client) {
 function moveBack(client, deleted) {
     var saved = state.savedDesktops[client.windowId];
     if (saved === undefined) {
-        log("Ignoring window not previously seen: " + client.caption);
+        log("Ignoring client not previously seen", client, true);
     } else {
-        log("Resotre client desktop to " + saved);
+        log("Resotring client to desktop" + saved, client, true);
         state.savedDesktops[client.windowId] = undefined;
         const old = client.desktop;
         if (clientsOnDesktop(old, false) <= 1) {
@@ -96,6 +107,10 @@ function moveBack(client, deleted) {
 }
 
 function fullHandler(client, full, user) {
+    if (ignore(client)) {
+        return;
+    }
+    log("Fullscreen toggled", client)
     if (full) {
         if (clientsOnDesktop(client.desktop, false) > 1) {
             moveToNewDesktop(client);
@@ -106,8 +121,12 @@ function fullHandler(client, full, user) {
 }
 
 function addHandler(client) {
-    if (!ignore(client) && (clientsOnDesktop(workspace.currentDesktop, true) > 0) && client.normalWindow) {
-        log("Moving new window to desktop 1")
+    if (ignore(client)) {
+        return;
+    }
+
+    if (clientsOnDesktop(workspace.currentDesktop, true) > 0) {
+        log("Client added, moving to desktop 1", client)
         client.desktop = 1;
         workspace.currentDesktop = 1;
         workspace.activeClient = client;
@@ -116,6 +135,11 @@ function addHandler(client) {
 
 
 function rmHandler(client) {
+    log("Client removed", client)
+    if (ignore(client)) {
+        return;
+    }
+
     moveBack(client, true);
 }
 
