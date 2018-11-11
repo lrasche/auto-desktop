@@ -16,16 +16,15 @@ function log(msg, client, indent) {
 }
 
 function ignoreClient(client) {
+    log("Ignore function");
     const ignoreList = ["plasmashell", "lattedock", "krunner", "kcmshell5"];
-    if (client.normalWindow) {
-        for (var i in ignoreList) {
-            if (ignoreList[i] == client.resourceClass) {
-                log("Ignoring client", client)
-                return true;
-            }
-        }
+    log(client.normalWindow);
+    
+    if (client.normalWindow && ignoreList.indexOf(client.resourceClass.toString()) == -1) {
+        return false;
     }
-    return false;
+    log("Ignoring client", client, true)
+    return true;
 }
 
 function clientsOnDesktop(desktop, onlyMaximized){
