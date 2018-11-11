@@ -15,7 +15,7 @@ function log(msg, client, indent) {
     print(prefix + msg + suffix);
 }
 
-function ignore(client) {
+function ignoreClient(client) {
     const ignoreList = ["plasmashell", "lattedock", "krunner", "kcmshell5"];
     if (client.normalWindow) {
         for (var i in ignoreList) {
@@ -34,13 +34,12 @@ function clientsOnDesktop(desktop, onlyMaximized){
         const clients = workspace.clientList();
         sum = 0;
         for (var i = 0; i < clients.length; i++) {
-            if(clients[i].desktop == desktop && !ignore(clients[i]) 
+            if(clients[i].desktop == desktop && !ignoreClient(clients[i]) 
             && (!onlyMaximized || state.savedDesktops[clients[i].windowId])) {
                 sum++;
             }
         }
-    }
-    
+    } 
     return sum;
 }
 
@@ -103,7 +102,7 @@ function moveBack(client, desktop, deleted) {
 }
 
 function fullHandler(client, full, user) {
-    if (ignore(client)) {
+    if (ignoreClient(client)) {
         return;
     }
     log("Fullscreen toggled", client)
@@ -133,7 +132,7 @@ function fullHandler(client, full, user) {
 }
 
 function addHandler(client) {
-    if (ignore(client)) {
+    if (ignoreClient(client)) {
         return;
     }
     if (clientsOnDesktop(workspace.currentDesktop, true) > 0) {
@@ -147,7 +146,7 @@ function addHandler(client) {
 
 function rmHandler(client) {
     log("Client removed", client)
-    if (ignore(client)) {
+    if (ignoreClient(client)) {
         return;
     }
     moveBack(client, 1, true);
