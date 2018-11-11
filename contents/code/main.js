@@ -69,7 +69,7 @@ function updateSavedDesktops(boundary, value) {
     for(var client in state.savedDesktops){
         if (state.savedDesktops[client].desktop >= boundary) {
             state.savedDesktops[client].desktop += value;
-            log("Updating savedDesktop to " + state.savedDesktops[client].desktop, workspace.getClient(client));
+            log("Updating savedDesktop to " + state.savedDesktops[client].desktop, workspace.getClient(client), true);
         }
     }
 }
@@ -86,14 +86,15 @@ function moveToNewDesktop(client) {
 }
 
 function moveBack(client, desktop, deleted) {
+    log("Resotring client to desktop " + desktop, client, true);
     delete state.savedDesktops[client.windowId];
-    const current = client.desktop;
+    const current = workspace.currentDesktop;
     if (clientsOnDesktop(current, false) <= 1) {
         shiftDesktops(current + 1, true);
+        updateSavedDesktops(current, -1);
     }
-    updateSavedDesktops(current, -1);
     if (deleted) {
-        workspace.currentDesktop = 1;
+        workspace.currentDesktop = desktop;
     } else {
         client.desktop = desktop;
         workspace.currentDesktop = desktop;
@@ -125,7 +126,6 @@ function fullHandler(client, full, user) {
             if (saved.maximizedAndFullscreen) {
                 saved.maximizedAndFullscreen = false;
             } else {
-                log("Resotring client to desktop " + saved.desktop, client, true);
                 moveBack(client, saved.desktop);
             }
         }
@@ -136,7 +136,6 @@ function addHandler(client) {
     if (ignore(client)) {
         return;
     }
-
     if (clientsOnDesktop(workspace.currentDesktop, true) > 0) {
         log("Client added, moving to desktop 1", client)
         client.desktop = 1;
@@ -151,8 +150,7 @@ function rmHandler(client) {
     if (ignore(client)) {
         return;
     }
-
-    moveBack(client, true);
+    moveBack(client, 1, true);
 }
 
 function install() {
