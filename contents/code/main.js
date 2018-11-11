@@ -28,13 +28,14 @@ function ignore(client) {
     return false;
 }
 
-function clientsOnDesktop(desktop, noBorder){
+function clientsOnDesktop(desktop, onlyMaximized){
     var sum = Infinity;
     if(desktop > 1 && workspace.desktops >= desktop) {
         const clients = workspace.clientList();
         sum = 0;
         for (var i = 0; i < clients.length; i++) {
-            if(clients[i].desktop == desktop && !ignore(clients[i]) && (clients[i].noBorder == noBorder || !noBorder) && !clients[i].deleted) {
+            if(clients[i].desktop == desktop && !ignore(clients[i]) 
+            && (!onlyMaximized || state.savedDesktops[clients[i].windowId])) {
                 sum++;
             }
         }
@@ -64,17 +65,17 @@ function shiftDesktops(boundary, reverse) {
 }
 
 function updateSavedDesktops(boundary, value) {
+    log("Updating savedDesktops");
     for(var client in state.savedDesktops){
-        if (state.savedDesktops[client] >= boundary) {
-            state.savedDesktops[client] += value;
-            log("Updating savedDesktop to " + state.savedDesktops[client], client, true)
+        if (state.savedDesktops[client].desktop >= boundary) {
+            state.savedDesktops[client].desktop += value;
+            log("Updating savedDesktop to " + state.savedDesktops[client].desktop, workspace.getClient(client));
         }
     }
 }
 
 function moveToNewDesktop(client) {
     log("Moving window to new desktop", client, true)
-    state.savedDesktops[client.windowId] = client.desktop;
     if (clientsOnDesktop(client.desktop +1, false) > 0) {
         shiftDesktops(client.desktop + 1, false);
     }
@@ -84,25 +85,19 @@ function moveToNewDesktop(client) {
     updateSavedDesktops(workspace.currentDesktop, 1);
 }
 
-function moveBack(client, deleted) {
-    var saved = state.savedDesktops[client.windowId];
-    if (saved === undefined) {
-        log("Ignoring client not previously seen", client, true);
+function moveBack(client, desktop, deleted) {
+    delete state.savedDesktops[client.windowId];
+    const current = client.desktop;
+    if (clientsOnDesktop(current, false) <= 1) {
+        shiftDesktops(current + 1, true);
+    }
+    updateSavedDesktops(current, -1);
+    if (deleted) {
+        workspace.currentDesktop = 1;
     } else {
-        log("Resotring client to desktop" + saved, client, true);
-        state.savedDesktops[client.windowId] = undefined;
-        const old = client.desktop;
-        if (clientsOnDesktop(old, false) <= 1) {
-            shiftDesktops(old + 1, true);
-        }
-        updateSavedDesktops(old, -1);
-        if (deleted) {
-            workspace.currentDesktop = 1;
-        } else {
-            client.desktop = saved;
-            workspace.currentDesktop = saved;
-            workspace.activeClient = client;
-        }
+        client.desktop = desktop;
+        workspace.currentDesktop = desktop;
+        workspace.activeClient = client;
     }
 }
 
@@ -112,11 +107,28 @@ function fullHandler(client, full, user) {
     }
     log("Fullscreen toggled", client)
     if (full) {
-        if (clientsOnDesktop(client.desktop, false) > 1) {
+        if (state.savedDesktops[client.windowId]) {
+            state.savedDesktops[client.windowId].maximizedAndFullscreen = true;
+        } 
+        else if (clientsOnDesktop(client.desktop, false) > 1) {
+            state.savedDesktops[client.windowId] = {
+                desktop: client.desktop,
+                maximizedAndFullscreen: false
+            };
             moveToNewDesktop(client);
     }
     } else {
-        moveBack(client);
+        var saved = state.savedDesktops[client.windowId];
+        if (saved === undefined) {
+            log("Ignoring client not previously seen", client, true);
+        } else {
+            if (saved.maximizedAndFullscreen) {
+                saved.maximizedAndFullscreen = false;
+            } else {
+                log("Resotring client to desktop " + saved.desktop, client, true);
+                moveBack(client, saved.desktop);
+            }
+        }
     }
 }
 
