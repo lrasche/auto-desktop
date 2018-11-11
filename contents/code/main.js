@@ -16,7 +16,7 @@ function log(msg, client, indent) {
 }
 
 function ignore(client) {
-    const ignoreList = ["plasmashell", "lattedock", "krunner"];
+    const ignoreList = ["plasmashell", "lattedock", "krunner", "kcmshell5"];
     if (client.normalWindow) {
         for (var i in ignoreList) {
             if (ignoreList[i] == client.resourceClass) {
