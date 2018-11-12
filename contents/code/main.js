@@ -3,6 +3,8 @@ var state = {
     enabled: true
 };
 
+const ignoreList = ["plasmashell", "lattedock", "krunner", "kcmshell5"];
+
 function log(msg, client, indent) {
     var suffix = "";
     var prefix = "Auto-Desktop: ";
@@ -15,11 +17,8 @@ function log(msg, client, indent) {
     print(prefix + msg + suffix);
 }
 
+//checks if the given client should be ignored
 function ignoreClient(client) {
-    log("Ignore function");
-    const ignoreList = ["plasmashell", "lattedock", "krunner", "kcmshell5"];
-    log(client.normalWindow);
-    
     if (client.normalWindow && ignoreList.indexOf(client.resourceClass.toString()) == -1) {
         return false;
     }
@@ -27,6 +26,7 @@ function ignoreClient(client) {
     return true;
 }
 
+//counts the number of client on given desktop
 function clientsOnDesktop(desktop, onlyMaximized){
     var sum = Infinity;
     if(desktop > 1 && workspace.desktops >= desktop) {
@@ -42,6 +42,7 @@ function clientsOnDesktop(desktop, onlyMaximized){
     return sum;
 }
 
+//shifts the desktop either forward or backward
 function shiftDesktops(boundary, reverse) {
     const clients = workspace.clientList();
     var direction = -1; 
@@ -62,6 +63,7 @@ function shiftDesktops(boundary, reverse) {
     }
 }
 
+
 function updateSavedDesktops(boundary, value) {
     log("Updating savedDesktops");
     for(var client in state.savedDesktops){
@@ -72,15 +74,15 @@ function updateSavedDesktops(boundary, value) {
     }
 }
 
-function moveToNewDesktop(client) {
+function moveToNextDesktop(client) {
     log("Moving window to new desktop", client, true)
     if (clientsOnDesktop(client.desktop +1, false) > 0) {
         shiftDesktops(client.desktop + 1, false);
+        updateSavedDesktops(workspace.currentDesktop, 1);
     }
     client.desktop += 1;
     workspace.currentDesktop += 1;
     workspace.activeClient = client;
-    updateSavedDesktops(workspace.currentDesktop, 1);
 }
 
 function moveBack(client, desktop, deleted) {
@@ -101,10 +103,11 @@ function moveBack(client, desktop, deleted) {
 }
 
 function fullHandler(client, full, user) {
+    log("\nuser:" + user)
+    log("Fullscreen toggled", client)
     if (ignoreClient(client)) {
         return;
     }
-    log("Fullscreen toggled", client)
     if (full) {
         if (state.savedDesktops[client.windowId]) {
             state.savedDesktops[client.windowId].maximizedAndFullscreen = true;
@@ -114,7 +117,7 @@ function fullHandler(client, full, user) {
                 desktop: client.desktop,
                 maximizedAndFullscreen: false
             };
-            moveToNewDesktop(client);
+            moveToNextDesktop(client);
     }
     } else {
         var saved = state.savedDesktops[client.windowId];
