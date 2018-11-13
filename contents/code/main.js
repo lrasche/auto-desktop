@@ -3,7 +3,7 @@ var state = {
     fullscreen: {}
 };
 
-var options = {
+var config = {
     enabled: true,
     ignoreList: ["plasmashell", "lattedock", "krunner"]
 };
@@ -21,8 +21,8 @@ function log(msg, client, indent) {
 }
 
 //checks if the given client should be ignored
-function ignoreClient(client) {
-    if (client.normalWindow && options.ignoreList.indexOf(client.resourceClass.toString()) == -1) {
+function ignoreClient (client) {
+    if (client.normalWindow && config.ignoreList.indexOf(client.resourceClass.toString()) == -1) {
         return false;
     }
     log("Ignoring client", client, true)
@@ -38,7 +38,7 @@ function isFullscreen (client) {
 }
 
 function desktopClients (desktop) {
-    return workspace.clientList().filter(c => c.desktop = desktop && !ignoreClient(c));
+    return workspace.clientList().filter(function(c) {return c.desktop == desktop && !ignoreClient(c)});
 }
 
 function desktopFullscreenClients (desktop) {
@@ -49,10 +49,10 @@ function desktopMaximizedClients (desktop) {
     return desktopClients(desktop).filter(isMaximized);
 }
 
-function updateDesktops(start, value) {
+function updateDesktops (start, value) {
     log("Updating savedDesktops");
-    for (let list in Object.keys(state)) {
-        for(var windowId in state.maximized){
+    for (var list in Object.keys(state)) {
+        for(var windowId in state[list]){
             if (state[list][windowId] >= start) {
                 state[list][windowId] += value;
                 log("Updating savedDesktop to " + state[list][windowId], workspace.getClient(windowId), true);
@@ -61,7 +61,7 @@ function updateDesktops(start, value) {
     }
 }
 
-function shiftDesktops(start, reverse) {
+function shiftDesktops (start, reverse) {
     const clients = workspace.clientList();
     var direction = -1; 
     
@@ -88,82 +88,82 @@ function insertDesktop (desktop) {
 }
 
 function removeDesktop (desktop) {
-    if (!desktopClients(desktop).length) {
+    if (desktopClients(desktop).length == 1) {
         shiftDesktops(desktop + 1, true);
     }
 }
 
-function moveToNextDesktop(client) {
-    log("Moving window to new desktop", client, true)
-    insertDesktop(client.desktop +1,);
-    client.desktop += 1;
-    workspace.currentDesktop += 1;
+function moveToDesktop (client, desktop) {
+    client.desktop = desktop;
+    workspace.currentDesktop = desktop;
     workspace.activeClient = client;
 }
 
-function moveBack(client, desktop, deleted) {
+function originalDesktop (client) {
+    return isMaximized(client) ? isMaximized(client) : isFullscreen(client);
+}
+
+function moveToNextDesktop (client) {
+    log("Moving window to new desktop", client, true)
+    var next = client.desktop + 1;
+    insertDesktop(next);
+    moveToDesktop(client, next);
+}
+
+
+function moveBack (client, desktop) {
     log("Resotring client to desktop " + desktop, client, true);
 
     delete state.maximized[client.windowId];
     delete state.fullscreen[client.windowId];
 
-    const current = workspace.currentDesktop;
-    if (deleted) {
-        workspace.currentDesktop = desktop;
-    } else {
-        client.desktop = desktop;
-        workspace.currentDesktop = desktop;
-        workspace.activeClient = client;
-    }
-
-    removeDesktop(current);
+    removeDesktop(workspace.currentDesktop);
+    moveToDesktop(client, desktop);
 }
 
-function fullscreenHandler(client, full, user) {
+function fullscreenHandler (client, full, user) {
     log("Fullscreen toggled", client)
-    if (ignoreClient(client)) {
+    if (ignoreClient(client) || isMaximized(client)) {
         return;
     }
 
     if (full) {
         if (desktopClients(client.desktop).length) {
+            state.fullscreen[client.windowId] = client.desktop;
             moveToNextDesktop(client);
         }
     } else {
         var saved = isFullscreen(client);
-        if (saved === undefined) {
+        if (saved == undefined) {
             log("Ignoring client not previously seen", client, true);
         } else {
-            if (isMaximized(client) == undefined) {
-                moveBack(client, saved.desktop);
-            }
+            moveBack(client, saved);
         }
     }
 }
 
-function maximizedHandler(client, h, v) {
+function maximizedHandler (client, h, v) {
     log("Maximized toggled", client)
-    if (ignoreClient(client)) {
+    if (ignoreClient(client) || isFullscreen(client)) {
         return;
     }
 
     if (h && v) {
         if (desktopClients(client.desktop).length) {
+            state.maximized[client.windowId] = client.desktop;
             moveToNextDesktop(client);
         }
     } else {
         var saved = isMaximized(client);
-        if (saved === undefined) {
+        if (saved == undefined) {
             log("Ignoring client not previously seen", client, true);
         } else {
-            if (isFullscreen(client) == undefined) {
-                moveBack(client, saved.desktop);
-            }
+            moveBack(client, saved);
         }
     }
 }
 
-function addHandler(client) {
+function addHandler (client) {
     if (ignoreClient(client)) {
         return;
     }
@@ -175,18 +175,21 @@ function addHandler(client) {
     }
 }
 
-function rmHandler(client) {
+function rmHandler (client) {
     log("Client removed", client)
     if (ignoreClient(client)) {
         return;
     }
 
     if(isFullscreen(client) || isMaximized(client)) {
-        moveBack(client, 1, true);
+        delete state.maximized[client.windowId];
+        delete state.fullscreen[client.windowId];
+        removeDesktop(workspace.currentDesktop);
+        workspace.currentDesktop = 1;
     }
 }
 
-function install() {
+function install () {
     workspace.clientMaximizeSet.connect(maximizedHandler);
     workspace.clientFullScreenSet.connect(fullscreenHandler);
     workspace.clientRemoved.connect(rmHandler);
@@ -195,7 +198,7 @@ function install() {
     log("Handler installed");
 }
 
-function uninstall() {
+function uninstall () {
     workspace.clientMaximizeSet.disconnect(maximizedHandler);
     workspace.clientFullScreenSet.disconnect(fullscreenHandler);
     workspace.clientRemoved.disconnect(rmHandler);
@@ -203,17 +206,17 @@ function uninstall() {
     log("Handler cleared");
 }
 
-registerUserActionsMenu(function(client){
+registerUserActionsMenu (function(client){
     return {
         text: "Maximize to New Desktop",
         items: [
             {
                 text: "Enabled",
                 checkable: true,
-                checked: options.enabled,
+                checked: config.enabled,
                 triggered: function() {
-                    options.enabled = !options.enabled;
-                    if (options.enabled) {
+                    config.enabled = !config.enabled;
+                    if (config.enabled) {
                         install();
                     } else {
                         uninstall();
