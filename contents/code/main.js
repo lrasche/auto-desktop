@@ -226,19 +226,21 @@ function unminimizedHanlder (client) {
 }
 
 function desktopChangeHandler (client, previousDesktop) {
+    log("Desktop presence changed", client);
     if (ignoreClient(client) || !client.active) {
         return;
     }
-
     var clients;
     var currentDesktop = client.desktop
     if (maximized(client) || fullscreen(client)) {
         if (currentDesktop == 1) {
+            log("Filling windows are not allowed on desktop 1!", client, true);
             moveToDesktop(client, previousDesktop);
             return;
         }
         clients = allClients(currentDesktop);
-    } else {
+    } 
+    else {
         clients = fillingClients(currentDesktop);
         if (previousDesktop == 1 && clients.length) {
             insertDesktop(2);
@@ -249,12 +251,15 @@ function desktopChangeHandler (client, previousDesktop) {
     var toSwap = clients.filter(function (c) {
         return c.windowId != client.windowId
     });
+
     if (toSwap.length) {
-        log("Switching desktop " + previousDesktop + " with " + currentDesktop, undefined);
+        log("Switching desktop " + previousDesktop + " with " + currentDesktop, undefined, true);
     }
+
     toSwap.forEach(function (c) {
         c.desktop = previousDesktop;
     });
+
     if (previousDesktop > 1 && !allClients(previousDesktop).length) {
         removeDesktop(previousDesktop);
     }
@@ -284,26 +289,5 @@ function uninstall () {
 
     log("Handler cleared");
 }
-
-registerUserActionsMenu (function(client){
-    return {
-        text: "Maximize to New Desktop",
-        items: [
-            {
-                text: "Enabled",
-                checkable: true,
-                checked: config.enabled,
-                triggered: function() {
-                    config.enabled = !config.enabled;
-                    if (config.enabled) {
-                        install();
-                    } else {
-                        uninstall();
-                    }
-                }
-            },
-        ]
-    };
-});
 
 install();
