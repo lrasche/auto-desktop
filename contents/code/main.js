@@ -118,6 +118,9 @@ function moveToDesktop (client, desktop) {
     log("Moving to desktop " + desktop, client, true);
     client.desktop = desktop;
     workspace.currentDesktop = desktop;
+    if (!client.minimized) {
+        workspace.activeClient = client;
+    }
 }
 
 function originalDesktop (client) {
@@ -137,9 +140,6 @@ function moveBack (client) {
     var origin = originalDesktop(client);
     removeDesktop(client.desktop);
     moveToDesktop(client, origin);
-    if (!client.minimized) {
-        workspace.activeClient = client;
-    }
 }
 
 function fullscreenHandler (client, full, user) {
