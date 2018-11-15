@@ -229,6 +229,7 @@ function desktopChangeHandler (client, previousDesktop) {
     if (ignoreClient(client) || !client.active) {
         return;
     }
+
     var clients;
     var currentDesktop = client.desktop
     if (maximized(client) || fullscreen(client)) {
@@ -241,7 +242,8 @@ function desktopChangeHandler (client, previousDesktop) {
         clients = fillingClients(currentDesktop);
         if (previousDesktop == 1 && clients.length) {
             insertDesktop(2);
-            previousDesktop = 2;
+            moveToDesktop(client, 2);
+            return;
         }
     }
     var toSwap = clients.filter(function (c) {
@@ -253,6 +255,9 @@ function desktopChangeHandler (client, previousDesktop) {
     toSwap.forEach(function (c) {
         c.desktop = previousDesktop;
     });
+    if (previousDesktop > 1 && !allClients(previousDesktop).length) {
+        removeDesktop(previousDesktop);
+    }
 }
 
 function install () {
